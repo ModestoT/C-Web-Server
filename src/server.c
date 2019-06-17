@@ -52,13 +52,12 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 {
     const int max_response_size = 262144;
     char response[max_response_size];
-
     // Build HTTP response and store it in response
 
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
-    sprintf(response, "header: %s\n" "content_type: %s\n" "content_length: %s" "\n" "%s", header, content_type, content_length, body);
+    sprintf(response, "%s\n" "%s\n" "%d\n" "\n" "%s", header, content_type, content_length, body);
     int response_length = strlen(response);
 
     // Send it all!
@@ -209,6 +208,7 @@ int main(void)
         
         // testing send response function
         resp_404(newfd);
+        
         // Print out a message that we got the connection
         inet_ntop(their_addr.ss_family,
             get_in_addr((struct sockaddr *)&their_addr),
