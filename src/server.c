@@ -52,13 +52,19 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 {
     const int max_response_size = 262144;
     char response[max_response_size];
+    int count;
     // Build HTTP response and store it in response
 
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
-    sprintf(response, "%s\n" "%s\n" "%d\n" "\n" "%s", header, content_type, content_length, body);
-    int response_length = strlen(response);
+    // sprintf(response, "%s\n" "%s\n" "%d\n" "\n" "%s", header, content_type, content_length, body);
+    // int response_length = strlen(response);
+    // making the header only
+    count = sprintf(response, "%s\n" "%s\n" "%d\n" "\n", header, content_type, content_length);
+    memcpy(response + count, body, content_length);
+    printf("%d, %ld, %d\n", count, strlen(response), content_length);
+    int response_length = content_length;
 
     // Send it all!
     int rv = send(fd, response, response_length, 0);
@@ -66,7 +72,6 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
     if (rv < 0) {
         perror("send");
     }
-
     return rv;
 }
 
@@ -81,13 +86,13 @@ void get_d20(int fd)
     // IMPLEMENT ME! //
     ///////////////////
     int randNum = rand() % 20;
-    char num[10];
+    char num[32];
     sprintf(num, "%d", randNum);
     // Use send_response() to send it back as text/plain data
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
-    send_response(fd, "HTTP/1.1 200 OK", "text/plain", num, sizeof(num));
+    send_response(fd, "HTTP/1.1 200 OK", "text/plain", num, sizeof num);
 }
 
 /**
@@ -131,14 +136,15 @@ void get_file(int fd, struct cache *cache, char *request_path)
     // Fetch the file
     snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
     filedata = file_load(filepath);
-
+    
+    // check to see if file exists
     if (filedata == NULL){
         fprintf(stderr, "Cannot find server file\n");
         exit(1);
     }
-
+    // grab the mime type of the file
     mime_type = mime_type_get(filepath);
-
+    // send the data from the file
     send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
 
     file_free(filedata);
@@ -187,7 +193,7 @@ void handle_http_request(int fd, struct cache *cache)
     //    Check if it's /d20 and handle that special case
     //    Otherwise serve the requested file by calling get_file()
         if(strcmp(path, "/d20") == 0){
-            // printf("Running /d20\n");
+            printf("Running /d20\n");
             get_d20(fd);
         } else {
             get_file(fd, cache, path);
