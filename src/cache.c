@@ -154,10 +154,16 @@ void cache_put(struct cache *cache, char *path, char *content_type, void *conten
     // Increment the current size of the cache.
     cache->cur_size++;
     // If the cache size is greater than the max size:
+    if (cache->cur_size > cache->max_size){
         // Remove the cache entry at the tail of the linked list.
+        struct cache_entry *removed = dllist_remove_tail(cache);
         // Remove that same entry from the hashtable, using the entry's path and the hashtable_delete function.
+        hashtable_delete(cache->index, removed->path);
         // Free the cache entry.
+        free_entry(removed);
         // Ensure the size counter for the number of entries in the cache is correct.
+        cache->cur_size--;
+    }
 }
 
 /**
