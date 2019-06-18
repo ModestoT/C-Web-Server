@@ -61,10 +61,17 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
     // sprintf(response, "%s\n" "%s\n" "%d\n" "\n" "%s", header, content_type, content_length, body);
     // int response_length = strlen(response);
     // making the header only
-    count = sprintf(response, "%s\n" "%s\n" "%d\n" "\n", header, content_type, content_length);
+    count = sprintf(response, 
+        "%s\n" 
+        "Content-Type: %s\n" 
+        "Content-Length: %d\n"
+        "Connetction: close\n" 
+        "\n", 
+        header, content_type, content_length);
+
     memcpy(response + count, body, content_length);
-    printf("%d, %ld, %d\n", count, strlen(response), content_length);
-    int response_length = content_length;
+    // printf("%d, %ld, %d\n", count, strlen(response), content_length);
+    int response_length = count + content_length;
 
     // Send it all!
     int rv = send(fd, response, response_length, 0);
@@ -85,14 +92,14 @@ void get_d20(int fd)
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
-    int randNum = rand() % 20;
-    char num[32];
-    sprintf(num, "%d", randNum);
+    int randNum = rand() % 20 + 1;
+    char num[16];
+    int num_len = sprintf(num, "%d", randNum);
     // Use send_response() to send it back as text/plain data
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
-    send_response(fd, "HTTP/1.1 200 OK", "text/plain", num, sizeof num);
+    send_response(fd, "HTTP/1.1 200 OK", "text/plain", num, num_len);
 }
 
 /**
