@@ -52,7 +52,6 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 {
     const int max_response_size = 262144;
     char response[max_response_size];
-    int count;
     // Build HTTP response and store it in response
 
     ///////////////////
@@ -61,7 +60,7 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
     // sprintf(response, "%s\n" "%s\n" "%d\n" "\n" "%s", header, content_type, content_length, body);
     // int response_length = strlen(response);
     // making the header only
-    count = sprintf(response, 
+    int count = sprintf(response, 
         "%s\n" 
         "Content-Type: %s\n" 
         "Content-Length: %d\n"
@@ -69,16 +68,23 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
         "\n", 
         header, content_type, content_length);
 
-    memcpy(response + count, body, content_length);
+    // memcpy(response + count, body, content_length);
     // printf("%d, %ld, %d\n", count, strlen(response), content_length);
-    int response_length = count + content_length;
+    // int response_length = count + content_length;
 
     // Send it all!
-    int rv = send(fd, response, response_length, 0);
+    int rv = send(fd, response, count, 0);
 
     if (rv < 0) {
         perror("send");
     }
+
+    rv = send(fd, body, content_length, 0);
+
+    if (rv < 0) {
+        perror("send");
+    }
+
     return rv;
 }
 
@@ -92,6 +98,7 @@ void get_d20(int fd)
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
+    srand(time(NULL));
     int randNum = rand() % 20 + 1;
     char num[16];
     int num_len = sprintf(num, "%d", randNum);
@@ -146,8 +153,7 @@ void get_file(int fd, struct cache *cache, char *request_path)
     
     // check to see if file exists
     if (filedata == NULL){
-        fprintf(stderr, "Cannot find server file\n");
-        exit(1);
+        resp_404(fd);
     }
     // grab the mime type of the file
     mime_type = mime_type_get(filepath);
