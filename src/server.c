@@ -50,6 +50,7 @@
  */
 int send_response(int fd, char *header, char *content_type, void *body, int content_length)
 {
+    printf("Running: %s\n", body);
     const int max_response_size = 262144;
     char response[max_response_size];
     // Build HTTP response and store it in response
@@ -64,12 +65,12 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
         "%s\n" 
         "Content-Type: %s\n" 
         "Content-Length: %d\n"
-        "Connetction: close\n" 
+        "Connection: close\n" 
         "\n", 
         header, content_type, content_length);
 
     // memcpy(response + count, body, content_length);
-    // printf("%d, %ld, %d\n", count, strlen(response), content_length);
+    
     // int response_length = count + content_length;
 
     // Send it all!
@@ -146,22 +147,54 @@ void get_file(int fd, struct cache *cache, char *request_path)
     char filepath[4096];
     struct file_data *filedata;
     char *mime_type;
-
-    // Fetch the file
-    snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
-    filedata = file_load(filepath);
-    
-    // check to see if file exists
-    if (filedata == NULL){
-        resp_404(fd);
+    struct cache_entry *cached_file = cache_get(cache, request_path);
+    // check if the file is in the cache
+    if ( cached_file != NULL){
+        // if it's not NULL it's in the cache, so we can return the file from here
+        send_response(fd, "HTTP/1.1 200 OK", cached_file->content_type, cached_file->content, cached_file->content_length);
+        printf("Running from cache: %s\n", cached_file->content);
         return;
-    }
-    // grab the mime type of the file
-    mime_type = mime_type_get(filepath);
-    // send the data from the file
-    send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
+    } else {
+        // Fetch the file from the disk
+        snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
+        filedata = file_load(filepath);
+        
+        // check to see if file exists
+        if (filedata == NULL){
+            resp_404(fd);
+            return;
+        }
 
-    file_free(filedata);
+        // grab the mime type of the file
+        mime_type = mime_type_get(filepath);
+
+        // store the file in the cache
+        cache_put(cache, request_path, mime_type, filedata->data, filedata->size);
+        // send the data from the file
+        send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
+
+        file_free(filedata);
+    }
+
+    // // Fetch the file from the disk
+    // snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
+    // filedata = file_load(filepath);
+    
+    // // check to see if file exists
+    // if (filedata == NULL){
+    //     resp_404(fd);
+    //     return;
+    // }
+
+    // // grab the mime type of the file
+    // mime_type = mime_type_get(filepath);
+
+    // // store the file in the cache
+    // cache_put(cache, request_path, mime_type, filedata->data, filedata->size);
+    // // send the data from the file
+    // send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
+
+    // file_free(filedata);
 }
 
 /**
@@ -204,8 +237,8 @@ void handle_http_request(int fd, struct cache *cache)
 
     // If GET, handle the get endpoints
     if(strcmp(method, "GET") == 0){
-    //    Check if it's /d20 and handle that special case
-    //    Otherwise serve the requested file by calling get_file()
+        // Check if it's /d20 and handle that special case
+        // Otherwise serve the requested file by calling get_file()
         if(strcmp(path, "/d20") == 0){
             printf("Running /d20\n");
             get_d20(fd);
