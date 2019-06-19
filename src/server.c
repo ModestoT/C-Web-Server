@@ -154,6 +154,7 @@ void get_file(int fd, struct cache *cache, char *request_path)
     // check to see if file exists
     if (filedata == NULL){
         resp_404(fd);
+        return;
     }
     // grab the mime type of the file
     mime_type = mime_type_get(filepath);
