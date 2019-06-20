@@ -50,7 +50,6 @@
  */
 int send_response(int fd, char *header, char *content_type, void *body, int content_length)
 {
-    printf("Running: %s\n", body);
     const int max_response_size = 262144;
     char response[max_response_size];
     // Build HTTP response and store it in response
@@ -152,15 +151,21 @@ void get_file(int fd, struct cache *cache, char *request_path)
     if ( cached_file != NULL){
         // if it's not NULL it's in the cache, so we can return the file from here
         send_response(fd, "HTTP/1.1 200 OK", cached_file->content_type, cached_file->content, cached_file->content_length);
-        printf("Running from cache: %s\n", cached_file->content);
         return;
     } else {
         // Fetch the file from the disk
         snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
         filedata = file_load(filepath);
         
-        // check to see if file exists
+        // check to see if an index.html file exists
+        if (strcmp(request_path, "/") == 0){
+            snprintf(filepath, sizeof filepath, "%s/index.html", SERVER_ROOT);
+            filedata = file_load(filepath);
+        }
+
+         // if no index.html file exists send a 404 response
         if (filedata == NULL){
+            printf("Running file not found\n");
             resp_404(fd);
             return;
         }
@@ -175,26 +180,6 @@ void get_file(int fd, struct cache *cache, char *request_path)
 
         file_free(filedata);
     }
-
-    // // Fetch the file from the disk
-    // snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
-    // filedata = file_load(filepath);
-    
-    // // check to see if file exists
-    // if (filedata == NULL){
-    //     resp_404(fd);
-    //     return;
-    // }
-
-    // // grab the mime type of the file
-    // mime_type = mime_type_get(filepath);
-
-    // // store the file in the cache
-    // cache_put(cache, request_path, mime_type, filedata->data, filedata->size);
-    // // send the data from the file
-    // send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
-
-    // file_free(filedata);
 }
 
 /**
@@ -227,10 +212,6 @@ void handle_http_request(int fd, struct cache *cache)
         perror("recv");
         return;
     }
-
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
 
     // Read the first two components of the first line of the request 
     sscanf(request, "%s" "%s", method, path);
@@ -288,9 +269,6 @@ int main(void)
             perror("accept");
             continue;
         }
-        
-        // testing send response function
-        // resp_404(newfd);
         
         // Print out a message that we got the connection
         inet_ntop(their_addr.ss_family,
